@@ -1,0 +1,1631 @@
+
+  /****************************************************************************************
+
+   Program: %M%
+   Version:  %I%
+   Date:       %D%
+
+   written by Casimir Artmann. 1996-2002
+   
+    printConferanceMenuHTML ()
+    printNewsgroupHTML ()
+    printSubjectHTML ()
+    printArticleHTML ()
+
+    printArticleForm ()
+    printCommentForm ()
+    printNewsgroupForm () 
+
+  */
+
+
+ /*
+    skriver ut ur menyval för konferansystemet
+    aktuella menyval är beroende på vilket kommando som getts,
+    samt vilka värden som finns i skärmbilden
+
+  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include "../cgi.h"
+#include "../utils.h"
+#include "intra.h"
+#include "db.h"
+#include "html.h"
+
+/*
+  List all categories within one server
+  This function is not avaliable in Limited Edition
+
+*/
+void printCategoryHTML ( struct _category *category )
+
+{
+   
+int counter ;
+
+struct _category *first ;
+
+first = category ;
+counter = 0 ; 
+
+printf("<UL>") ;
+
+while ( category != NULL )
+ {
+    printf ("<IMG SRC=\"%s/category.gif\"> <a href=\"%s/subject%s?method=select&category=%d\">%s</a>",
+                 ICON_PATH, CGI_PATH, EXECUTABLE, category->id, category->name  ) ;
+ 
+   printf("<br>") ;
+
+  category = category->next ;
+  counter ++ ;
+ }
+
+printf("</UL>") ;
+
+category = first ;
+
+}   /* end of printCategoryHTML */
+
+
+	/*
+
+   List all subjects within a category
+
+
+*/
+
+void printSubjectHTML ( struct _user user, struct _subject *subject )
+
+{
+   
+int counter ;
+int category ;
+char sCategory[32]  ;
+
+struct _subject *first ;
+
+first = subject ;
+counter = 0 ; 
+
+if ( strcmp ( EDITION, "Limited"))
+  {
+   category = subject->category ;
+   getCategoryName ( category, sCategory ) ;
+   printf("<H3>%s</H3>", sCategory ) ;
+  }
+
+printf("<UL>") ;
+
+while ( subject != NULL )
+ {
+
+
+  if ( category > 0 )
+    printf ("<IMG SRC=\"%s/subject.gif\"> <a href=\"%s/title%s?method=select&category=%d&group=%d\">%s</a>",
+                ICON_PATH, CGI_PATH, EXECUTABLE, category, subject->id, subject->name ) ;
+
+  else
+    printf ("<IMG SRC=\"%s/subject.gif\"> <a href=\"%s/title%s?method=select&group=%d\">%s</a>", ICON_PATH, CGI_PATH, EXECUTABLE, subject->id, subject->name ) ;
+  printf("<br>") ;
+
+  subject = subject->next ;
+  counter ++ ;
+ }
+
+printf("</UL>") ;
+subject = first ;
+
+
+}   /* end of printNewsgroupHTML */
+
+    /* listar alla rubriker på alla titlar i en
+       nyhetsgrupp som länkar till artiklarna */
+
+void printTitleHTML ( int category_id, int subject_id, struct _user user, struct _title *title )
+
+  /* skriver ut titel på ett objekt följt av författare
+     om nytt inlägg så visas en icon
+	 om oläst inlägg så visas inlägget med fet stil
+
+	 titel länkas till objektet och för författaren till hans e-postadress
+     upp till 10 subnivåer visas på skärmen via indrag, 11:e nivå och
+	 därefter visas med samma indrag som nivå 10
+     	 alla objekttyper kan kommenteras, förutom typ 0 och 1.
+	
+	 objekttyper som stöds
+
+               0 - folder
+	 1 - länk
+	 2 - artikel
+	 3 - meddelande
+	 4 - e-post
+	 5 - dokument
+	 6 - image
+	 7 - sound
+	 8 - video
+	 9 - publication
+
+    */
+
+{
+
+int indent ;    /* räknare för nivå på inlägg */
+int counter ;
+
+char sCategory[32] ;        /* */ 
+char sSubject[32] ;       /* */
+char sRemark[255] ;              /* */
+
+char OBJECT [128] ;
+
+struct _title *ptr_title ;  /* första rubriken */
+
+ptr_title = title ;
+counter = 0 ; 
+indent = 0 ;                   /* huvudrubriker har nivå 1 */
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( category_id, sCategory ) ;
+
+getSubjectName ( category_id, subject_id, sSubject ) ;
+getSubjectRemark ( category_id, subject_id, sRemark ) ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  printf ("<H3>%s - %s</H3>\n", sCategory, sSubject ) ;
+else
+  printf ("<H3>%s</H3>\n", sSubject ) ;
+
+ /* Print remark with a smaller font size */
+
+if ( strlen ( sRemark ) > 0 )
+{
+  printf("<FONT SIZE=-1>") ;
+  printf("%s", sRemark ) ;
+  printf ("</FONT>") ;
+}
+
+printf("<UL>") ;
+
+while ( ptr_title != NULL )
+ {
+
+   /* bestäm nivå på inlägg */
+
+  if ( ptr_title->indent > 10 )
+    ptr_title->indent =  10 ;
+  if ( ptr_title->indent < 0 )
+    ptr_title->indent = 0 ;
+
+  if ( indent < ptr_title->indent )
+    for (; indent < ptr_title->indent;indent++)     
+       printf("<UL>") ;
+  if ( indent > ptr_title->indent )
+      for (; indent > ptr_title->indent;indent--)
+         printf("</UL>") ;
+
+  indent = ptr_title->indent ;
+
+if ( strlen (ptr_title->title) > 0 )
+  {
+
+  if ( ptr_title->type == -1 )    /* alias */   
+     strcpy ( OBJECT, "alias") ;
+  if ( ptr_title->type == 0 )    /* HTML-länk */   
+     strcpy ( OBJECT, "folder") ;
+  if ( ptr_title->type == 1 )    /*  */ 
+	 strcpy ( OBJECT, "link") ;
+  if ( ptr_title->type == 2 )    /* artikel i konferansystem */ 
+	 strcpy ( OBJECT, "article") ;
+  if ( ptr_title->type == 3)    /* meddelande  i konferansystem */ 
+	 strcpy ( OBJECT, "message") ;
+  if ( ptr_title->type == 5 )    /* document  i konferansystem */ 
+	 strcpy ( OBJECT, "document") ;
+  if ( ptr_title->type == 4 )    /* e-mail message */ 
+	 strcpy ( OBJECT, "letter") ;
+  if ( ptr_title->type == 6 )    /* image */ 
+	 strcpy ( OBJECT, "image") ;
+  if ( ptr_title->type == 7 )    /* audio */ 
+	 strcpy ( OBJECT, "audio") ;
+  if ( ptr_title->type == 8 )    /* video */ 
+	 strcpy ( OBJECT, "video") ;
+  if ( ptr_title->type == 9 )    /*  */ 
+	 strcpy ( OBJECT, "publication") ;
+ 
+
+     if ( strcmp (EDITION,"Limited"))
+	 {
+      printf("<a href=\"%s/%s%s?method=edit&category=%d&group=%d&id=%d\"><img border=0 src=\"%s/%s.gif\"></a> <a href=\"%s/%s%s?method=select&category=%d&group=%d&id=%d\">%s</a> ",
+		      CGI_PATH, OBJECT, EXECUTABLE, ptr_title->category, ptr_title->subject, ptr_title->id, ICON_PATH, OBJECT, CGI_PATH, OBJECT, EXECUTABLE, ptr_title->category,  ptr_title->subject, ptr_title->id, ptr_title->title ) ;
+	  if ( strlen ( ptr_title->author ) > 0 )
+		  printf("- <a href=\"mailto:%s\">%s</a>\n",
+                  ptr_title->from, ptr_title->author ) ;
+     }
+	  else
+	  {
+        printf("<a href=\"%s/%s%s?method=edit&group=%d&id=%d\"><IMG SRC=\"%s/%s.gif\" border=0></a> <a href=\"%s/%s%s?method=select&group=%d&id=%d\">%s</a> ",
+			    CGI_PATH, OBJECT, EXECUTABLE, ptr_title->subject, ptr_title->id, ICON_PATH, OBJECT, CGI_PATH, OBJECT, EXECUTABLE, ptr_title->subject, ptr_title->id, ptr_title->title ) ;
+		if (( strlen ( ptr_title->author ) > 0 ) && ( strlen ( ptr_title->from) > 0 ))
+		  printf("- <a href=\"mailto:%s\">%s</a>\n",
+                  ptr_title->from, ptr_title->author ) ; 
+	  }
+ 
+  /* ny rubrik  */
+
+  if ( difftoday_str (  ptr_title->timestamp  ) <=  (double) ( 60 * 60 * 24 * 7 ))
+    printf ("<IMG SRC=\"%s/new.gif\"><br>\n", ICON_PATH ) ;
+ else
+  printf("<br>\n") ;
+  }       
+
+  ptr_title = ptr_title->next ;
+
+ }
+
+/*  Sätt rätt nivå på indentering */   
+
+if ( indent > 0  )
+    for (; indent > 0;indent--)     
+       printf("</UL>") ;
+ 
+if ( indent <  0  )
+      for (; indent < 0 ;indent++)
+         printf("<UL>") ;
+
+ printf("</UL>") ;   /* ett sista avslutande som matcthar första */
+
+   
+}  /* end of printTitle */
+ 
+
+/*************************************************************************/
+
+
+void printAllTitleHTML ( struct _user user, struct _title *title )
+
+  /* skriver ut titel på ett objekt följt av författare
+     om nytt inlägg så visas en icon
+	 om oläst inlägg så visas inlägget med fet stil
+
+	 titel länkas till objektet och för författaren till hans e-postadress
+     upp till 10 subnivåer visas på skärmen via indrag, 11:e nivå och
+	 därefter visas med samma indrag som nivå 10
+     	 alla objekttyper kan kommenteras, förutom typ 0 och 1.
+	
+	 objekttyper som stöds
+
+     0 - länk
+	 2 - artikel
+	 1 - meddelande
+	 3 - dokument
+	 4 - e-post
+	 5 - image
+	 6 - sound
+	 7 - video
+
+    */
+
+{
+
+int indent ;    /* räknare för nivå på inlägg */
+int counter ;
+int category_id ;
+int subject_id ;
+int categories ;
+int groups ;
+int first ;
+
+char sName[40] ;
+
+char sCategory[32] ;        /* */ 
+char sSubject[32] ;       /* */
+char sRemark[255] ;              /* */
+
+char OBJECT [32] ;
+
+struct _title *ptr_title ;  /* första rubriken */
+
+ptr_title = title ;
+
+counter = 0 ; 
+indent = 0 ;                   /* huvudrubriker har nivå 1 */ 
+
+printf("<UL>") ;
+ 
+while ( title != NULL )
+ {
+    /* om nästa ämne så skall ny rubrik skrivas ut */
+ 
+  if (( title->category != category_id ) || 
+	  ( title->subject !=  subject_id ))
+    first = TRUE  ;
+
+if ( first == TRUE ) 
+{ 
+
+  /*
+  if ( strcmp ( EDITION, "Limited" ))
+  printf ("<H3>%s - %s</H3>\n", sCategory, sSubject ) ;
+else
+  printf ("<H3>%s</H3>\n", sSubject ) ;
+  */
+
+   
+   first = FALSE ;
+} ;
+
+   /* bestäm nivå på inlägg */
+
+  if ( title->indent > 10 )
+    title->indent =  10 ;
+  if ( title->indent < 0 )
+    title->indent = 0 ;
+
+  if ( indent < title->indent )
+    for (; indent < title->indent;indent++)     
+       printf("<UL>") ;
+  if ( indent > title->indent )
+      for (; indent > title->indent;indent--)
+         printf("</UL>") ;
+
+  indent = title->indent ;
+
+if ( strlen (title->title) > 0 )
+  {
+
+ if  ( title->type == -1 )    /* alias */   
+     strcpy ( OBJECT, "alias") ;
+  if ( title->type == 0 )    /* HTML-länk */   
+     strcpy ( OBJECT, "folder") ;
+  if ( title->type == 1 )    /*  */ 
+	 strcpy ( OBJECT, "link") ;
+  if ( title->type == 2 )    /* artikel i konferansystem */ 
+	 strcpy ( OBJECT, "article") ;
+  if ( title->type == 3)    /* meddelande  i konferansystem */ 
+	 strcpy ( OBJECT, "message") ;
+  if ( title->type == 5 )    /* document  i konferansystem */ 
+	 strcpy ( OBJECT, "document") ;
+  if ( title->type == 4 )    /* e-mail message */ 
+	 strcpy ( OBJECT, "letter") ;
+  if ( title->type == 6 )    /* image */ 
+	 strcpy ( OBJECT, "image") ;
+  if ( title->type == 7 )    /* audio */ 
+	 strcpy ( OBJECT, "audio") ;
+  if ( title->type == 8 )    /* video */ 
+	 strcpy ( OBJECT, "video") ;
+  if ( title->type == 9 )    /*  */ 
+	 strcpy ( OBJECT, "publication") ;
+  if ( title->type == 10 )
+              strcpy ( OBJECT, "asset" ) ;
+
+     if ( strcmp (EDITION,"Limited"))
+	 {
+      printf("<a href=\"%s/%s%s?method=edit&category=%d&group=%d&id=%d\"><img border=0 src=\"%s/%s.gif\"></a> <a href=\"%s/%s%s?method=select&category=%d&group=%d&id=%d\">%s</a> ",
+		      CGI_PATH, OBJECT, EXECUTABLE, title->category, title->subject, title->id, ICON_PATH, OBJECT, CGI_PATH, OBJECT, EXECUTABLE, title->category,  title->subject, title->id, title->title ) ;
+	  if ( strlen ( title->author ) > 0 )
+		  printf("- <a href=\"mailto:%s\">%s</a>\n",
+                  title->from, title->author ) ;
+     }
+	  else
+	  {
+        printf("<a href=\"%s/%s%s?method=edit&group=%d&id=%d\"><IMG SRC=\"%s/%s.gif\" border=0></a> <a href=\"%s/%s%s?method=select&group=%d&id=%d\">%s</a> ",
+			    CGI_PATH, OBJECT, EXECUTABLE, title->subject, title->id, ICON_PATH, OBJECT, CGI_PATH, OBJECT, EXECUTABLE, title->subject, title->id, title->title ) ;
+		if (( strlen ( title->author ) > 0 ) && ( strlen ( title->from) > 0 ))
+		  printf("- <a href=\"mailto:%s\">%s</a>\n",
+                  title->from, title->author ) ; 
+	  }
+ 
+  /* ny rubrik  */
+
+  if ( difftoday_str (  title->timestamp  ) <=  (double) ( 60 * 60 * 24 * DAYS ))
+    printf ("<IMG SRC=\"%s/new.gif\"><br>\n", ICON_PATH ) ;
+ else
+  printf(" <br>\n") ;
+
+  }
+
+  title = title->next ;
+
+ }
+
+/*  Sätt rätt nivå på indentering */   
+
+if ( indent > 0  )
+    for (; indent > 0;indent--)     
+       printf("</UL>") ;
+ 
+if ( indent <  0  )
+      for (; indent < 0 ;indent++)
+         printf("<UL>") ;
+
+ printf("</UL>") ;   /* ett sista avslutande som matcthar första */   
+
+title = ptr_title ;
+
+}  /* end of printInbox */
+
+
+void printArticleHTML ( struct _user user, struct _article article )
+
+{
+
+char sLocale[255];
+
+printf ("<H3>%s</H3>\n",article.title ) ;
+printf("<address>") ;
+
+  /* skriv ut vem som har skickat inlägget */
+
+if ( strlen ( article.company ) > 0 )
+  {
+
+    if ( strlen ( article.from ) > 0 )
+      printf("<a href=\"mailto:%s\">%s</a> - <strong>%s</strong> %s<br>",
+        article.from, article.author, article.company, article.timestamp ) ;
+    else
+      printf("%s - <strong>%s</strong> %s<br>",
+        article.author, article.company, article.timestamp ) ;
+  }
+else
+  {
+  
+   if ( strlen ( article.from ) > 0 )
+     printf("<a href=\"mailto:%s\">%s</a> %s<br>",
+       article.from, article.author, article.timestamp ) ;
+   else
+       printf("%s %s<br>", article.author, article.timestamp ) ;
+  }
+
+printf("</address>\n") ;
+
+printf("<P>") ;
+
+   /* är denna artikel en kommentar till en tidigare artikel */
+
+if ( article.indent > 0 )
+ {
+  GetLocaleText ( MESSAGES, LOCALE, 20, sLocale ) ; /* Comment to text */
+  printf("<cite>%s<a href=\"%s/article%s?method=select&", LOCALE, CGI_PATH, EXECUTABLE  ) ;
+  printf("category=%d&group=%d&id=%d\">%s</a></cite><br>\n", article.category, article.subject,  article.comment, article.reply ) ;
+
+ }   /* end if ( article.indent > 0 ) */
+
+  /* skriv ut inlägg om det innehåller text */
+
+if ( article.text != NULL )
+ { 
+  printfHTML(  article.text ) ;
+ }
+
+/*
+  för att kunna välja redigera eller ta bort gäller följande:
+  om inloggad användare och ägare av artikel eller administratör
+  skall man kunna redigera artikel
+*/
+
+if (((  article.owner == user.id ) && ( user.id > 0 ))|| ( user.id == 1 ))
+ {
+  printf("\n<table border=\"0\"> <tr><td>\n") ;
+  printf("<FORM method=\"get\" action=\"%s/article%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"edit\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", article.category ) ;
+  printf("<input type=hidden name=group value=\"%d\">\n", article.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  GetLocaleText ( MESSAGES, LOCALE, 13, sLocale ) ;   /* Edit */
+  printf("<input type=submit value=\"%s \">", sLocale) ;
+
+  printf ("</FORM>" ) ;
+  printf("</td><td>") ;
+  printf("<FORM method=\"get\" action=\"%s/article%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"delete\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", article.category ) ;
+  printf("<input type=hidden name=group value=\"%d\">\n", article.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  GetLocaleText ( MESSAGES, LOCALE, 14, sLocale ) ; /* Delete */
+  printf("<input type=submit value=\"%s \">", sLocale ) ;
+  printf ("</FORM>" ) ;
+  printf ("</td></tr></table>") ;
+ }   /* end of if */
+
+
+}  /* end of printArticleHTML */
+
+void printPublicationHTML ( struct _user user, struct _article article )
+
+{
+
+char sLocale[255];
+
+printf ("<H3>%s</H3>\n",article.title ) ;
+
+  /* skriv ut författare/artist och eventuellt  förlag */
+
+ if ( article.group < LP )
+     printf("Författare: ") ;
+  else
+    printf("Artist: ") ;
+
+if ( strlen ( article.company ) > 0 )
+  {
+  
+     if ( strlen ( article.from ) > 0 )
+      printf("<a href=\"mailto:%s\">%s</a> - <strong>%s</strong><br>",
+        article.from, article.author, article.company ) ;
+    else
+      printf("%s - <strong>%s</strong><br>",
+        article.author, article.company ) ;
+  }
+else
+  {
+  
+   if ( strlen ( article.from ) > 0 )
+     printf("<a href=\"mailto:%s\">%s</a><br>",
+       article.from, article.author ) ;
+   else
+       printf("%s<br>", article.author ) ;
+  }
+
+printf ("Media: ") ;
+if ( article.group  == BOOK )
+ printf("ISBN \n<br>\n") ;
+
+if ( article.group == MAGAZINE )
+ printf("Tidskrift \n<br>\n") ;
+
+if ( article.group == NEWSPAPER )
+ printf("Tidning\n<br>\n") ;
+
+if ( article.group == LP  )
+ printf("Vinyl\n<br>\n") ;
+
+if ( article.group == AUDIO_TAPE  )
+ printf("Kassettband\n<br>\n") ;
+
+if ( article.group == VIDEO_TAPE )
+ printf("Videoband\n<br>\n") ;
+
+if ( article.group == CD )
+ printf("CD \n<br>\n") ;
+
+if ( article.group == DAT )
+ printf("DAT \n<br>\n") ;
+
+if ( article.group == DVD )
+ printf("DVD \n<br>\n") ;
+
+  /* skriv ut text om det finns någon */
+
+printf("<P>\n") ;
+
+if ( article.text != NULL )
+ {   
+  printfHTML(  article.text ) ;
+ }
+
+/*
+  för att kunna välja redigera eller ta bort gäller följande:
+  om inloggad användare och ägare av artikel eller administratör
+  skall man kunna redigera artikel
+*/
+
+if (((  article.owner == user.id ) && ( user.id > 0 ))|| ( user.id == 1 ))
+ {
+  printf("\n<table border=\"0\"> <tr><td>\n") ;
+  printf("<FORM method=\"get\" action=\"%s/article%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"edit\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", article.category ) ;
+  printf("<input type=hidden name=subject value=\"%d\">\n", article.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  GetLocaleText ( MESSAGES, LOCALE, 13, sLocale ) ;   /* Edit */
+  printf("<input type=submit value=\"%s \">", sLocale) ;
+
+  printf ("</FORM>" ) ;
+  printf("</td><td>") ;
+  printf("<FORM method=\"get\" action=\"%s/article%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"delete\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", article.category ) ;
+  printf("<input type=hidden name=subject value=\"%d\">\n", article.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  GetLocaleText ( MESSAGES, LOCALE, 14, sLocale ) ; /* Delete */
+  printf("<input type=submit value=\"%s \">", sLocale ) ;
+  printf ("</FORM>" ) ;
+  printf ("</td></tr></table>") ;
+ }   /* end of if */
+
+
+}  /* end of printPublicationHTML */
+
+void printMessageHTML ( struct _user user, struct _message message )
+
+{
+
+char sLocale[255] ;
+
+
+printf ("<H3>%s</H3>\n",message.title ) ;
+
+   /* är denna artikel en kommentar till en tidigare artikel */
+
+if ( message.indent > 0 )
+ {
+ 
+  GetLocaleText ( MESSAGES, LOCALE, 20, sLocale ) ; /* Comment to text */
+  printf("<cite>%s<a href=\"%s/article%s?method=select&", sLocale, CGI_PATH, EXECUTABLE  ) ;
+  printf("category=%d&group=%d&id=%d\">%s</a></cite><br>", message.category, message.subject,  message.comment, message.reply ) ;
+
+ }   /* end if ( message.indent > 0 ) */
+
+  /* skriv ut inlägg om det innehåller text */
+
+if ( message.text != NULL )
+ { 
+  printf("%s\n", message.text ) ;
+ }
+
+ printf("<address>") ;
+
+  /* skriv ut vem som har skickat inlägget */
+
+   /* skriv ut vem som har skickat inlägget */
+
+if ( strlen ( message.company ) > 0 )
+  {
+	  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /*Author */
+    if ( strlen ( message.from ) > 0 )
+      printf("%s: <a href=\"mailto:%s\">%s</a> - <strong>%s</strong><br>",
+        sLocale, message.from, message.author, message.company ) ;
+    else
+      printf("%s: %s - <strong>%s</strong><br>",
+        sLocale, message.author, message.company ) ;
+  }
+else
+  {
+	  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Author */
+   if ( strlen ( message.from ) > 0 )
+     printf("%s: <a href=\"mailto:%s\">%s</a><br>",
+        sLocale, message.from, message.author ) ;
+   else
+       printf("%s: %s<br>", sLocale, message.author ) ;
+  }
+
+
+GetLocaleText ( MESSAGES, LOCALE, 22, sLocale ) ;   /* Date */
+
+printf("%s: %s<br></address>\n", sLocale, message.timestamp ) ;
+printf("<P>") ;
+
+
+printf("<table><tr><td>\n") ;
+printf("<FORM method=\"post\" action=\"%s/comment%s\">", CGI_PATH, EXECUTABLE ) ;
+printf("<input type=hidden name=method value=\"edit\"> \n") ;
+printf("<input type=hidden name=category value=\"%d\">\n", message.category ) ;
+printf("<input type=hidden name=group value=\"%d\">\n", message.subject ) ;
+printf("<input type=hidden name=id value=\"%d\">\n", message.id ) ;
+printf("<input type=submit value=\"Kommentera \">") ;
+
+printf ("</FORM>\n" ) ;
+printf("</td>\n") ;
+/*
+  för att kunna välja redigera eller ta bort gäller följande:
+  om inloggad användare och ägare av artikel eller administratör
+  skall man kunna redigera artikel
+*/
+
+if ((( message.owner == user.id ) && ( user.id > 0 ))|| ( user.id == 1 ))
+ {
+  printf("<td>\n") ;
+  printf("<FORM method=\"get\" action=\"%s/message%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"edit\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", message.category ) ;
+  printf("<input type=hidden name=group value=\"%d\">\n", message.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", message.id ) ;
+  printf("<input type=submit value=\"Redigera \">") ;
+
+  printf ("</FORM>" ) ;
+  printf("</td><td>") ;
+  printf("<FORM method=\"get\" action=\"%s/article%s\">", CGI_PATH, EXECUTABLE ) ;
+  printf("<input type=hidden name=method value=\"delete\"> \n") ;
+  printf("<input type=hidden name=category value=\"%d\">\n", message.category ) ;
+  printf("<input type=hidden name=group value=\"%d\">\n", message.subject ) ;
+  printf("<input type=hidden name=id value=\"%d\">\n", message.id ) ;
+  printf("<input type=submit value=\"Ta bort \">") ;
+
+  printf ("</FORM>" ) ;
+  printf("</td>") ;
+
+ }   /* end of if */
+printf ("</tr></table>") ;
+
+}  /* end of printMessageHTML */
+
+
+void printLinkHTML ( struct _link link )
+
+{
+
+printf("<HTML>") ;
+printf("<META HTTP-EQUIV=\"Refresh\" CONTENT=\"1;URL=%s\">", link.href) ;
+printf("</HTML>") ;
+}
+
+/**********************************************************/
+
+
+
+void SubjectListBoxHTML ( struct _subject *subject )
+
+
+{
+
+printf("<SELECT name=\"group\">") ;
+
+while ( subject != NULL )
+ {
+  printf ("<OPTION value=\"%d\">%s\n", subject->id, subject->name ) ;
+  subject = subject->next ;
+ }
+printf("</SELECT>") ;
+
+}
+
+void  MediaListBoxHTML () 
+
+{
+
+printf("<SELECT name=\"media\">") ;
+
+printf("<OPTION value=\"0\">\n") ;
+printf("<OPTION value=\"1\">Bok\n") ;
+printf("<OPTION value=\"2\">Tidskrift\n") ;
+printf("<OPTION value=\"3\">Tidning\n") ;
+printf("<OPTION value=\"4\">LP\n") ;
+printf("<OPTION value=\"5\">Kassett band\n") ;
+printf("<OPTION value=\"6\">Video band\n") ;
+printf("<OPTION value=\"7\">DAT\n") ;
+printf("<OPTION value=\"8\">CD\n") ;
+printf("<OPTION value=\"9\">DVD\n") ;
+printf("<OPTION value=\"10\">Övrigt\n") ;
+
+printf("</SELECT>") ;
+
+}
+
+void CategoryListBoxHTML ( struct _category *category )
+
+{
+
+printf("<SELECT name=\"category\">") ;
+
+while ( category != NULL )
+ {
+  printf ("<OPTION value=\"%d\">%s\n", category->id, category->name ) ;
+  category = category->next ;
+ }
+printf("</SELECT>") ;
+
+}
+
+void TextBoxHTML ( char *name, char *value, int size )
+
+{
+
+printf("<input name=\"%s\" value=\"%s\" size=%d>", name, value, size) ;
+
+}
+
+void EditBoxHTML ( char *name, char *value, int rows, int cols )
+
+{
+
+printf("<textarea name=\"%s\" rows=\"%d\" cols=%d>", name, rows, cols) ;
+printf("%s</textarea>", value ) ;
+
+}
+
+/**/
+
+void printMessageForm ( struct _message message )
+
+{
+
+char sCategory[32] ;
+char sSubject[32] ;
+char sLocale[255] ;
+
+struct _subject subject ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( message.category, sCategory ) ;
+
+if ( message.subject > 0 )
+  getSubjectName ( message.category, message.subject, sSubject ) ;
+
+if ( message.id != 0 )
+  GetLocaleText ( MESSAGES, LOCALE, 25, sLocale ) ;
+else
+  GetLocaleText ( MESSAGES, LOCALE, 24, sLocale ) ;
+
+printf("<H2>%s</H2>\n", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/message%s\">\n", CGI_PATH, EXECUTABLE ) ;
+
+if ( message.id  != 0 )
+  {
+   printf( "<input type=hidden name=method value=\"update\"> \n") ;
+   printf(" <input type=hidden name=id value=\"%d\">\n", message.id ) ;
+  }
+else
+  {
+  printf("<input type=hidden name=method value=\"insert\"> \n") ;
+  }
+
+if ( strcmp ( EDITION, "Limited"))
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", message.category ) ;
+
+printf("<table border=0>\n") ;
+
+if ( strcmp ( EDITION, "Limited"))
+ {
+  GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+
+  printf("<tr>") ;
+  printf("<td>%s:</td>", sLocale) ;
+  printf("<td> %s", sCategory ) ;
+
+  printf("</td>") ;
+  printf("</tr>\n") ;
+ }
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ; /* Subject */
+printf("<tr>") ;
+printf("<td>%s:</td>", sLocale) ;
+printf("<td>") ;
+
+subject.category = message.category ;
+
+if ( message.subject == 0 )
+ {
+   selectSubject ( &subject,"ALL","DATE", NULL ) ; /* läs önskade nyhetsgrupper från fil */
+  SubjectListBoxHTML ( &subject ) ;
+  }
+else
+  {
+   printf("%s", sSubject ) ;
+   printf("<input type=hidden name=group value=\"%d\">", message.subject ) ;
+  }
+
+printf("</td></td>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 6, sLocale ) ;
+
+printf("<tr><td>%s: </td><td>", sLocale) ;
+TextBoxHTML ( "title", message.title, 25 ) ;
+printf("</td></tr>") ;
+
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ;
+
+printf("<tr><td valign=\"top\">%s:<td>", sLocale) ;
+EditBoxHTML ( "text", message.text, 5, 35 ) ;
+printf("</td></tr>") ;
+
+ /* om annonym användare så skall programmet fråga efter namn och e-postadress */
+
+if ( strlen ( message.author ) > 0  )
+  {
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* author */
+  printf("<tr><td>%s</td><td>%s", sLocale, message.author ) ;
+  printf("</td></tr>") ;
+  printf ("<input type=hidden name=author value=\"%s\">", message.author ) ;
+  printf ("<input type=hidden name=from value=\"%s\">", message.from ) ;
+  }
+else
+ {
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* author */
+  printf("<tr><td>%s:<td>",sLocale ) ;
+  TextBoxHTML ( "author", message.author, 25 ) ;
+  printf("</td></tr>") ;
+
+  GetLocaleText ( MESSAGES, LOCALE, 8, sLocale ) ; /* e-mail */
+  printf("<tr><td valign=\"top\">%s:<td>", sLocale) ;
+  TextBoxHTML ( "from", message.from, 25 ) ;
+  printf("</td></tr>") ;
+ }
+
+printf("<tr><td></td><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ;
+printf("<input type=submit value=\"%s\">", sLocale) ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ;
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+}
+
+void printLinkForm ( struct _link link )
+
+{
+
+char sCategory[32] ;
+char sSubject[32] ;
+char sLocale[255] ;
+
+struct _subject subject ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( link.category, sCategory ) ;
+
+if ( link.subject > 0 )
+  getSubjectName ( link.category, link.subject, sSubject ) ;
+
+if ( link.id != 0 )
+  GetLocaleText ( MESSAGES, LOCALE, 32, sLocale ) ;  /* Edit link */
+else
+  GetLocaleText ( MESSAGES, LOCALE, 31, sLocale ) ;  /* New link */
+
+printf("<H2>%s</H2>\n", sLocale ) ;     
+
+printf("<FORM method=\"post\" action=\"%s/link%s\">\n", CGI_PATH, EXECUTABLE ) ;
+
+if ( link.id  != 0 )
+   printf( "<input type=hidden name=method value=\"update\"> \n") ;
+else
+  printf("<input type=hidden name=method value=\"insert\"> \n") ;
+
+if ( strcmp ( EDITION, "Limited"))
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", link.category ) ;
+
+printf("<table border=0>\n") ;
+
+if ( strcmp ( EDITION, "Limited"))
+ {
+
+  GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ;  /* category */
+
+  printf("<tr>") ;
+  printf("<td>%s:</td>", sLocale) ;
+  printf("<td> %s", sCategory ) ;
+
+  printf("</td>") ;
+  printf("</tr>\n") ;
+ }
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ;  /* subject */
+
+printf("<tr>") ;
+printf("<td>%s:</td>", sLocale) ;
+printf("<td>") ;
+
+subject.category = link.category ;
+
+if ( link.subject == 0 )
+ {
+  selectSubject ( &subject,"ALL","DATE", NULL ) ; /* läs önskade nyhetsgrupper från fil */
+  SubjectListBoxHTML ( &subject ) ;
+  }
+else
+  {
+   printf("%s", sSubject ) ;
+   printf("<input type=hidden name=group value=\"%d\">", link.subject ) ;
+  }
+
+printf("</td></td>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 6, sLocale ) ;  /* title */
+
+printf("<tr><td>%s:</td><td>", sLocale) ;
+TextBoxHTML ( "title", link.title, 25 ) ;
+printf("</td></tr>") ;
+
+strcpy ( link.href, "http://") ;
+GetLocaleText ( MESSAGES, LOCALE, 30, sLocale ) ;  /* Link */
+
+printf("<tr><td valign=\"top\">%s:<td>", sLocale ) ;
+TextBoxHTML ( "link", link.href, 64 ) ;
+printf("</td></tr>") ;
+
+ /* om annonym användare så skall programmet fråga efter namn och e-postadress */
+
+if ( strlen ( link.author ) > 0  )
+  {
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+
+  printf("<tr><td>%s:</td><td>%s", sLocale, link.author ) ;
+  printf("</td></tr>") ;
+  printf ("<input type=hidden name=author value=\"%s\">", link.author ) ;
+  printf ("<input type=hidden name=from value=\"%s\">", link.from ) ;
+  }
+else
+ {
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ;  /* Name */
+
+  printf("<tr><td>%s:<td>", sLocale ) ;
+  TextBoxHTML ( "author", link.author, 25 ) ;
+  printf("</td></tr>") ;
+
+  GetLocaleText ( MESSAGES, LOCALE, 8, sLocale ) ;   /* E-mail */
+
+  printf("<tr><td valign=\"top\">%s:<td>", sLocale) ;
+  TextBoxHTML ( "from", link.from, 25 ) ;
+  printf("</td></tr>") ;
+ }
+
+printf("</table>") ;
+printf("<table>") ;
+
+printf("<tr><td></td><td>" ) ;
+
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ;    /* Save */
+printf("<input type=submit value=\"%s \">", sLocale) ;
+
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ;    /* Cancel */
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+}
+
+
+/*****************************************************************/
+
+void printArticleForm ( struct _article article )
+
+{
+char sCategory[32] ;
+char sSubject[32] ;
+char sLocale[255] ;
+
+struct _subject subject ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( article.category, sCategory ) ;
+
+if ( article.subject > 0 )
+  getSubjectName ( article.category, article.subject, sSubject ) ;
+
+if ( article.id != 0 )
+  GetLocaleText ( MESSAGES, LOCALE, 42, sLocale ) ; /* Edit article*/
+else
+  GetLocaleText ( MESSAGES, LOCALE, 41, sLocale ) ; /* New article */
+
+printf("<H2>%s</H2>\n", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/article%s\">\n", CGI_PATH, EXECUTABLE ) ;
+
+if ( article.id  != 0 )
+  {
+   printf( "<input type=hidden name=method value=\"update\"> \n") ;
+   printf(" <input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  }
+else
+  {
+  printf("<input type=hidden name=method value=\"insert\"> \n") ;
+  }
+
+
+if ( strcmp ( EDITION, "Limited"))
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", article.category ) ;
+
+
+printf("<table border=0>\n") ;
+
+if ( strcmp ( EDITION, "Limited"))
+ {
+
+  GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+  printf("<tr>") ;
+  printf("<td>%s:</td>", sLocale) ;
+  printf("<td> %s", sCategory ) ;
+
+  printf("</td>") ;
+  printf("</tr>\n") ;
+ }
+
+printf("<tr>") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ; /* subject */
+printf("<td>%s:</td>", sLocale) ;
+printf("<td>" ) ;
+
+subject.category = article.category ;
+
+if ( article.subject == 0 )
+  {
+    selectSubject ( &subject,"ALL","DATE", NULL ) ; /* lds vnskade nyhetsgrupper fren fil */
+    SubjectListBoxHTML ( &subject ) ;
+  }
+else
+  {
+   printf("%s", sSubject ) ;
+   printf("<input type=hidden name=group value=\"%d\">", article.subject ) ;
+  }
+
+printf("</td></td></tr>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 6, sLocale ) ; /* Title */
+printf("<tr><td>%s:</td><td>", sLocale) ;
+TextBoxHTML ( "title", article.title, 25 ) ;
+printf("</td></tr>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ; /* Text */
+
+printf("<tr><td valign=\"top\">%s: <td>", sLocale ) ;
+EditBoxHTML ( "text", article.text, 5, 35 ) ;
+printf("</td></tr>\n") ;
+
+ /* om annonym användare så skall programmet fråga efter namn och e-postadress */
+
+if ( strlen ( article.author ) > 0  )
+  {
+
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+  printf("<tr><td>%s: </td><td>%s", sLocale, article.author ) ;
+  printf("</td></tr>\n") ;
+  printf ("<input type=hidden name=author value=\"%s\">", article.author ) ;
+  printf ("<input type=hidden name=from value=\"%s\">", article.from ) ;
+  }
+else
+ {
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+  printf("<tr><td>%s: </td><td>", sLocale) ;
+  TextBoxHTML ( "author", article.author, 25 ) ;
+  printf("</td></tr>\n") ;
+  GetLocaleText ( MESSAGES, LOCALE, 8, sLocale ) ; /* E-mail */
+
+  printf("<tr><td valign=\"top\">%s: <td>", sLocale ) ;
+  TextBoxHTML ( "from", article.from, 25 ) ;
+  printf("</td></tr>\n") ;
+ }
+printf("</table>\n") ;
+printf("<table>") ;
+printf("<tr><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ; /* Save */
+printf("<input type=submit value=\"%s \">", sLocale ) ;
+printf("</td><td>") ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+
+printf ("</td></tr></table>\n") ;
+printf ("</FORM>" ) ;
+
+}
+
+void printPublicationForm ( struct _article article )
+
+{
+char sCategory[32] ;
+char sSubject[32] ;
+char sLocale[255] ;
+
+struct _subject subject ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( article.category, sCategory ) ;
+
+if ( article.subject > 0 )
+  getSubjectName ( article.category, article.subject, sSubject ) ;
+
+if ( article.id != 0 )
+  GetLocaleText ( MESSAGES, LOCALE, 42, sLocale ) ; /* Edit article*/
+else
+  GetLocaleText ( MESSAGES, LOCALE, 41, sLocale ) ; /* New article */
+
+printf("<H2>%s</H2>\n", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/publication%s\">\n", CGI_PATH, EXECUTABLE ) ;
+
+if ( article.id  != 0 )
+  {
+   printf( "<input type=hidden name=method value=\"update\"> \n") ;
+   printf(" <input type=hidden name=id value=\"%d\">\n", article.id ) ;
+  }
+else
+  {
+  printf("<input type=hidden name=method value=\"insert\"> \n") ;
+  }
+
+
+if ( strcmp ( EDITION, "Limited"))
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", article.category ) ;
+
+
+printf("<table border=0>\n") ;
+
+if ( strcmp ( EDITION, "Limited"))
+ {
+
+  GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+  printf("<tr>") ;
+  printf("<td>%s:</td>", sLocale) ;
+  printf("<td> %s", sCategory ) ;
+
+  printf("</td>") ;
+  printf("</tr>\n") ;
+ }
+
+printf("<tr>") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ; /* subject */
+printf("<td>%s:</td>", sLocale) ;
+printf("<td>" ) ;
+
+subject.category = article.category ;
+
+if ( article.subject == 0 )
+  {
+    selectSubject ( &subject,"ALL","DATE", NULL ) ; /* lds vnskade nyhetsgrupper fren fil */
+    SubjectListBoxHTML ( &subject ) ;
+  }
+else
+  {
+   printf("%s", sSubject ) ;
+   printf("<input type=hidden name=subject value=\"%d\">", article.subject ) ;
+  }
+
+printf("</td></td></tr>\n") ;
+
+
+GetLocaleText ( MESSAGES, LOCALE, 6, sLocale ) ; /* Title */
+printf("<tr><td>%s:</td><td>", sLocale) ;
+TextBoxHTML ( "title", article.title, 25 ) ;
+printf("</td></tr>\n") ;
+
+printf("<tr><td>%s:</td><td>", "Media") ;
+MediaListBoxHTML () ;
+printf("</td></tr>") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ; /* Text */
+
+printf("<tr><td valign=\"top\">%s: <td>", sLocale ) ;
+EditBoxHTML ( "text", article.text, 5, 35 ) ;
+printf("</td></tr>\n") ;
+
+ /* om annonym användare så skall programmet fråga efter namn och e-postadress */
+
+GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+printf("<tr><td>%s: </td><td>", sLocale) ;
+TextBoxHTML ( "author", article.author, 25 ) ;
+printf("</td></tr>\n") ;
+GetLocaleText ( MESSAGES, LOCALE, 8, sLocale ) ; /* E-mail */
+
+printf("<tr><td valign=\"top\">%s: <td>", sLocale ) ;
+TextBoxHTML ( "from", article.from, 25 ) ;
+printf("</td></tr>\n") ;
+
+printf("</table>\n") ;
+printf("<table>") ;
+printf("<tr><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ; /* Save */
+printf("<input type=submit value=\"%s \">", sLocale ) ;
+printf("</td><td>") ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+
+printf ("</td></tr></table>\n") ;
+printf ("</FORM>" ) ;
+
+}
+
+
+/*
+   HTML form for making att komment to an object
+   Can be used for every object type exept 0 and 1.
+
+*/
+
+void printCommentForm ( struct _message message )
+
+{
+
+char sCategory[32] ;
+char sSubject[32] ;
+char sLocale[255];
+
+struct _subject subject ;
+
+if ( strcmp ( EDITION, "Limited" ))
+  getCategoryName ( message.category, sCategory ) ;
+
+if ( message.subject > 0 )
+  getSubjectName ( message.category, message.subject, sSubject ) ;
+
+GetLocaleText ( MESSAGES, LOCALE, 27, sLocale ) ; /* New comment */
+
+printf("<H2>%s</H2>", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/message%s\">", CGI_PATH, EXECUTABLE ) ;
+
+printf("<input type=hidden name=method value=\"insert\"> \n") ;
+
+if ( message.category > 0 )
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", message.category ) ;
+
+printf("<input type=hidden name=group value=\"%d\"> \n", message.subject ) ;
+printf("<input type=hidden name=comment value=\"%d\" >\n", message.comment );
+printf("<input type=hidden name=indent value=\"%d\" >\n", message.indent );
+printf("<table border=0>\n") ;
+
+if ( message.category > 0 )
+{
+  GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+
+  printf("<tr>") ;
+  printf("<td>%s: </td>", sLocale) ;
+  printf("<td>%s", sCategory ) ;
+
+  printf("</td>") ;
+  printf("</tr>\n<tr>") ;
+}
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ; /* subject */
+printf("<td>%s: </td>", sLocale ) ;
+printf("<td>") ;
+subject.category = message.category ;
+if ( message.subject == 0 )
+  {
+    selectSubject ( &subject,"ALL","DATE", NULL ) ; /* lds vnskade nyhetsgrupper fren fil */
+    SubjectListBoxHTML ( &subject ) ;
+  }
+else
+  {
+   printf("%s", sSubject ) ;
+   printf("<input type=hidden name=group value=\"%d\">", message.subject ) ;
+  }
+
+printf("</td></td></tr>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 43, sLocale ) ; /*  Prevoius*/
+
+printf("<tr><td>%s: </td><td>", sLocale) ;
+printf("%s</td></tr>", message.reply ) ;
+
+GetLocaleText ( MESSAGES, LOCALE, 6, sLocale ) ; /* Title */
+printf("<tr><td>%s: </td><td valign=\"top\">", sLocale ) ;
+
+TextBoxHTML ( "title",message.title, 25 ) ;
+printf("</td></tr>") ;
+
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ; /* Text */
+printf("<tr><td valign=\"top\">%s: </td><td valign=\"top\">", sLocale ) ;
+EditBoxHTML ( "text", "", 5,35 ) ;
+printf("</td></tr>") ;
+
+ /* om annonym användare så skall programmet fråga efter namn och e-postadress */
+
+if ( strlen ( message.author ) > 0  )
+  {
+
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+
+  printf("<tr><td>%s: </td><td>%s", sLocale, message.author ) ;
+  printf("</td></tr>") ;
+  printf ("<input type=hidden name=author value=\"%s\">", message.author ) ;
+  printf ("<input type=hidden name=from value=\"%s\">", message.from ) ;
+  }
+else
+ {
+
+  GetLocaleText ( MESSAGES, LOCALE, 9, sLocale ) ; /* Name */
+  printf("<tr><td>%s: <td>", sLocale ) ;
+  TextBoxHTML ( "author", message.author, 25 ) ;
+  printf("</td></tr>") ;
+
+  GetLocaleText ( MESSAGES, LOCALE, 8, sLocale ) ; /* E-mail */
+  printf("<tr><td valign=\"top\">%s: <td>", sLocale ) ;
+  TextBoxHTML ( "from", message.from, 25 ) ;
+  printf("</td></tr>") ;
+ }
+
+printf("</table>") ;
+printf("<table>") ;
+
+printf("<tr><td></td><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ; /* Save */
+printf("<input type=submit value=\"%s \">", sLocale ) ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"%s \">", sLocale ) ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+
+}
+
+/*******************************************************************/
+
+void printSubjectFormHTML ( struct _subject subject )
+
+{
+
+char sLocale[255] ;
+
+
+GetLocaleText ( MESSAGES, LOCALE, 53, sLocale ) ; /* New subject */
+
+printf ("<H2>%s</H2>", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/subject%s\">", CGI_PATH, EXECUTABLE ) ;
+
+printf("<input type=hidden name=method value=\"insert\"> \n") ;
+
+printf("<table border=0>\n") ;
+
+ if ( strcmp( EDITION, "Limited"))      /* Om Edition Limited skall  inte denna raden skrivas ut */
+  printf( "<input type=hidden name=category  value=\"%d\"> \n", subject.category ) ;
+
+
+GetLocaleText ( MESSAGES, LOCALE, 4, sLocale ) ; /* Subject */
+
+printf("<tr><td>%s: </td><td valign=\"top\">", sLocale ) ;
+TextBoxHTML ( "name",subject.name, 25 ) ;
+printf("</td></tr>") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ; /* Text */
+printf("<tr><td>%s: <td valign=\"top\">", sLocale ) ;
+EditBoxHTML ( "remark", "", 5,35 ) ;
+printf("</td></tr>") ;
+
+printf("<tr><td></td><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ; /* Save */
+printf("<input type=submit value=\"%s \">", sLocale ) ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+}
+
+/*
+
+ HTML form used to create a new category
+
+*/
+
+void printCategoryFormHTML ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 52, sLocale ) ; /* New category */
+
+printf ("<H2>%s</H2>", sLocale ) ;
+
+printf("<FORM method=\"post\" action=\"%s/category%s\">", CGI_PATH, EXECUTABLE ) ;
+
+printf("<input type=hidden name=method value=\"insert\"> \n") ;
+
+printf( "<input type=hidden name=category  value=\"%d\"> \n", category.id ) ;
+
+printf("<table border=0>\n") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+printf("<tr><td>%s: </td><td valign=\"top\">", sLocale ) ;
+TextBoxHTML ( "name",category.name, 25 ) ;
+printf("</td></tr>") ;
+
+GetLocaleText ( MESSAGES, LOCALE, 7, sLocale ) ; /* Text */
+printf("<tr><td>%s: <td valign=\"top\">", sLocale ) ;
+EditBoxHTML ( "remark", "", 5,35 ) ;
+printf("</td></tr>") ;
+
+printf("<tr><td></td><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 10, sLocale ) ; /* Save */
+printf("<input type=submit value=\"%s \">", sLocale ) ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"%s\">", sLocale ) ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+}
+
+/*
+
+  Chose the appropriciate category for an object
+
+ 
+
+*/
+
+void printObjectCategoryForm ( struct _category category, char *program, char *sLocale )
+
+{
+
+printf("<H2>%s</H2>\n", sLocale ) ;  /* Name of form */
+
+printf("<FORM method=\"post\" action=\"%s/%s%s\">\n", CGI_PATH, program, EXECUTABLE ) ;
+printf("<input type=hidden name=method value=\"edit\"> \n") ;
+printf("<input type=hidden name=group value=\"0\"> \n") ;
+
+printf("<table border=0>\n") ;
+printf("<tr>") ;
+GetLocaleText ( MESSAGES, LOCALE, 3, sLocale ) ; /* Category */
+printf("<td>%s</td>", sLocale ) ;
+printf("<td>") ;
+
+selectCategory ( &category,"ALL","DATE", NULL ) ; /* läs önskade kategorier  från fil */
+
+CategoryListBoxHTML ( &category ) ;
+
+printf("</td></tr>\n") ;
+printf("<tr><td></td><td>" ) ;
+GetLocaleText ( MESSAGES, LOCALE, 16, sLocale ) ; /* Continue */
+printf("<input type=submit value=\"Forts&auml;tt \">") ;
+GetLocaleText ( MESSAGES, LOCALE, 11, sLocale ) ; /* Cancel */
+printf("<input type=reset value=\"Avbryt\">") ;
+printf ("</td></tr></table>") ;
+printf ("</FORM>" ) ;
+
+}
+
+void printArticleCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 44, sLocale ) ; /* Cancel */
+printObjectCategoryForm ( category, "article", sLocale ) ;
+
+}
+
+void printPublicationCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 74, sLocale ) ; /* Cancel */
+printObjectCategoryForm ( category, "publication", sLocale ) ;
+
+}
+void printDocumentCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 74, sLocale ) ; /* Cancel */
+printObjectCategoryForm ( category, "document", sLocale ) ;
+
+}
+
+void printMessageCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 29, sLocale ) ; /* Category for message */
+printObjectCategoryForm ( category, "message", sLocale ) ;
+
+}
+
+void printCommentCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 69, sLocale ) ; /* Category for message */
+printObjectCategoryForm ( category, "comment", sLocale ) ;
+
+}
+
+void printLinkCategoryForm ( struct _category category )
+
+{
+
+char sLocale[255] ;
+
+GetLocaleText ( MESSAGES, LOCALE, 34, sLocale ) ; /* Category for link */
+printObjectCategoryForm ( category, "link", sLocale ) ;
+
+}
+
+

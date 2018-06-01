@@ -1,0 +1,63 @@
+** Ändringar gjorda 98-03-16, Casimir Artmann
+
+ExpandArticle och ExpandMethod har fått ändrade parametrar
+char *string ersatt med struct _CGIarg *CGIarg
+
+** Ändringar gjorda 98-03-17, Casimir Artmann
+
+bURLencode har fått ändrade parametrar, 
+char *string ersatt med struct _CGIarg *CGIarg
+
+  OBS!!!  Funktionen är ej fullständigt ändrad
+
+cgi.c är uppdelad i cgi.h och cgi.c
+
+** Ändringar gjorda 98-05-06, Casimir Artmann
+databasfiler och db.c har ändrats för att <TAB> som fältseparator
+ändrade fält i databasen, se filen README
+
+bURLencode är nu klar för beta version  
+ 
+** Ändringar gjorda 1998-08-14 **
+
+Behörighetskontroll via WWW-server utnyttjas av programmet för utökad funktionalitet.
+
+Programmet finns nu i två versioner, Limited Edition och Standard Edition. Koden är avsedd att utökas med Extended Edition. Vilken version man kör sätts i filen intra.ini
+
+Följande programdelar finns nu i drift
+
+category		- Kategorier av ämnen, Std
+subject		- Ämnen
+title                         - Rubrik på artikalr och meddelanden
+article                     - Artikel
+message                - (Meddelande)
+inbox                      - Alla artiklar och meddelanden
+about                      - Visa version
+profile                     - Visa användare
+
+Ändrade filnamn
+newsgroup.* har bytt namn till title.*
+conferance.* har bytt namn till subject.*
+
+Den nya källkoden finns nu i katalogen cgi-src/intra istället för cgi-src/conferance
+
+All källkod är nu under SCCS
+Den aktuella versionen är 1.1 och ändras förs när nya funktioner läggs till
+
+Kvarstår gör kod för prenumeration på inlägg, samt kod för att redigera och ta bort information.
+Då dessa funktioner är klara skall db.c och html.c delas upp i moduler och kompileras separat.
+
+Version 2.1.1 - 1998-12-01
+
+Prenumerera, länl och dokument har lagts till
+Buggrättningar
+åbörjade källkod för menyhantering
+
+Version 2.1.1.5 - 1998-12-23
+expand.* ersatt med intra.*
+InitConferance ersatt med InitIntra, kodänding pga av förberedelse av portning till NT av gemensam källkod
+
+
+
+
+

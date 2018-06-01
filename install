@@ -1,0 +1,30 @@
+Installationsanvisningar för konferanssystem
+
+UNIX    - Apache 1.2 eller högre
+
+/httpd - installationskatalog
+/httpd/htdocs   - HTML document root
+
+/httpd/cgi-src	- källkod
+/httpd/cgi-bin 	- kompilerade script
+
+/httpd/htdocs/intra	- HTML-filer
+/httpd/icons		- symboler
+/httpd/db		- data	
+
+/httpd/cgi-bin/intra/intra.ini	- konfigureringsfil
+
+
+
+
+Windows NT - IIS 3.0 eller högre
+
+/inetpub 
+/inetpub/wwwroot
+
+/inetpub/cgi-src
+/inetpub/cgi-bin
+
+/inetpub/wwwroot/intra
+/inetpub/icons
+/inetpub/db

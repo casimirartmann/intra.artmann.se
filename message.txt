@@ -1,0 +1,78 @@
+1	1	Intra
+46	1	Intra
+1	2	Server
+46	2	Server
+1	3	Category
+46	3	Kategori
+1	4	Subject
+46	4	Ämne
+1	5	Object
+46	5	Objekt
+1	6	Title
+46	6	Rubrik
+1	7	Text
+46	7	Text
+1	8	E-mail
+46	8	E-post
+1	9	Name
+1	9	Namn
+1	10	Save
+46	10	Spara
+1	11	Cancel
+46	11	Avbryt
+1	12	Comment
+46	12	Kommentera
+1	13	Edit
+46	13	Ändra
+1	14	Delete
+46	14	Ta bort
+1	15	Send e-mail
+46	15	Skicka e-post
+1	16	Continue
+46	16	Fortsätt
+1	20	Message
+46	20	Meddelande
+1	21	Author
+46	21	Författare
+1	22	Date
+46	22	Datum
+1	24	New message
+46	24	Nytt meddelande
+1	25	Edit message
+46	25	Ändra meddelande
+1	26	Delete message
+46	26	Ta bort meddelande
+1	27	Comment message
+46	27	Kommentera meddelande
+1	28	Comment to text
+46	28  Kommentar till text
+1	29	Category for message
+46	29	Kategori för meddelande
+1	30	Link
+46	30	Länk
+1	31	New link
+46	31	Ny länk
+1	32	Edit link
+46	32	Ändra länk
+1	34	Category for message
+46	34	Kategoru för meddelande
+1	40	Article
+46	40	Artikel
+1	41	New article
+46	41	Ny artikel
+1	42	Edit article
+46	42	Ändra artikel
+1	44	Category for article
+46	44	Kategori för artikel
+1	52	New category
+46	52	Ny kategori
+1	53	New subject
+46	53	Nytt ämne
+1	54	Category for subject
+46	54	Kategori för ämne
+1	60	Comment
+46	60	Kommentar
+1	61	New comment
+46	61	Ny kommentar
+1	62	Edit comment
+46	62	Ändra kommentar

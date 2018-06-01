@@ -1,0 +1,32 @@
+
+Konferanssystemet består av följande delar:
+
+  category 	- visar kategorier
+  subject 	- visar nyhetsgrupper i en kategori
+  title 	- visar vilka artiklar som finns för aktuell nyhetsgrupp
+  article 	- visa en artikel
+  comment 	- skicka en kommentar till en artikel
+  message	- visa ett meddelande
+  document	- visa ett dokument
+  link	 	-
+  admin		-
+  setup		-
+  menu 		-
+  inbox		-
+  profile 	-
+  about		-  
+  subscribe    	-
+  (configure)   -
+
+  för att underlätta programutvecklingen är koden uppdelade i olika block
+  
+    db.* innehåller alla funktioner som används för att läsa/skriva data till disk
+    html.* innehåller alla funktioner för att presentera information i en browser
+    intra.* innehåller funktioner till olika porgramdelar
+
+    ../cgi.* innehåller generella funktioner för CGI-script och HTML
+    ../utils.* innehåller övriga generella funktioner
+
+  
+       All kod hanteras via SCCS
+
